@@ -177,40 +177,117 @@ other genres that have almost exactly the right energy.
 
 ---
 
+## Scoring Modes (Strategy pattern)
+
+`src/recommender.py` defines three interchangeable scoring strategies in `SCORING_MODES`. Each
+mode is a `ScoringMode` with its own weights, and `score_song` / `recommend_songs` take a `mode`
+argument. Switch modes from the command line:
+
+```bash
+python -m src.main --mode genre-first      # default recipe: genre 2.0, mood 1.0, energy 1.5, acoustic 0.5
+```
+
+```bash
+python -m src.main --mode mood-first       # genre 1.0, mood 2.0, energy 1.5, acoustic 0.5
+```
+
+```bash
+python -m src.main --mode energy-focused   # experiment: genre 1.0, mood 1.0, energy 3.0, acoustic 0.5
+```
+
+Run a single profile with `--profile "Hip-Hop Head"`. Full outputs for all 7 profiles are in
+[model_card.md](model_card.md#7-evaluation).
+
+---
+
 ## Experiments You Tried
 
-Use this section to document the experiments you ran. For example:
+### Experiment 1: weight shift (double energy, halve genre)
 
-- What happened when you changed the weight on genre from 2.0 to 0.5
-- What happened when you added tempo or valence to the score
-- How did your system behave for different types of users
+I changed energy from 1.5 to **3.0** and genre from 2.0 to **1.0** (`--mode energy-focused`). The
+math is still valid: every part stays non-negative, energy closeness is still between 0 and 1
+before weighting, and the max score is 1 + 1 + 3 + 0.5 = 5.5. Top-5 results compared:
+
+| Profile | genre-first (default) | energy-focused (experiment) |
+|---|---|---|
+| High-Energy Pop | Sunrise City, **Gym Hero**, Block Party Anthem, Fuego Lento, Rooftop Lights | Sunrise City, Block Party Anthem, **Gym Hero**, Fuego Lento, Rooftop Lights |
+| Chill Lofi | Library Rain, Midnight Coding, Focus Flow, Spacewalk Thoughts, Slow Burn | Library Rain, Midnight Coding, Focus Flow, Slow Burn, Spacewalk Thoughts |
+| Hip-Hop Head | Concrete Crown, Block Party Anthem, Night Drive Loop, Rooftop Lights, Sunrise City | Concrete Crown, Block Party Anthem, Night Drive Loop, Rooftop Lights, Fuego Lento |
+| Sad but Hyped | **Paper Boats**, Storm Runner, Gym Hero, Bassline Fever, Block Party Anthem | Storm Runner, Gym Hero, Bassline Fever, Block Party Anthem, Iron Requiem |
+
+The output for the profile that changed the most:
+
+```
+========================================================================
+Profile: Sad but Hyped (conflict)   (mode: energy-focused)
+Prefs:   genre=folk, mood=sad, energy=0.9, likes_acoustic=False
+========================================================================
+1. Storm Runner by Voltline  [rock / intense]
+   Score: 3.42
+     - energy 0.91 vs target 0.90 (+2.97)
+     - produced/electronic sound fit (+0.45)
+2. Gym Hero by Max Pulse  [pop / intense]
+   Score: 3.38
+     - energy 0.93 vs target 0.90 (+2.91)
+     - produced/electronic sound fit (+0.47)
+3. Bassline Fever by Pulse District  [edm / euphoric]
+   Score: 3.33
+     - energy 0.95 vs target 0.90 (+2.85)
+     - produced/electronic sound fit (+0.48)
+4. Block Party Anthem by Verse Theory  [hip-hop / happy]
+   Score: 3.29
+     - energy 0.84 vs target 0.90 (+2.82)
+     - produced/electronic sound fit (+0.47)
+5. Iron Requiem by Grave Signal  [metal / angry]
+   Score: 3.27
+     - energy 0.97 vs target 0.90 (+2.79)
+     - produced/electronic sound fit (+0.48)
+```
+
+**Result: mostly *different*, not more accurate.** Clear-taste profiles barely moved (same #1,
+small swaps lower down). The big change was the conflicting profile: the only sad folk song,
+*Paper Boats*, fell out of the top 5 completely, and the list turned into generic loud songs.
+Whether that is "better" depends on what the user meant, which the system can't know. Doubling
+energy also made the loud-song bubble stronger: *Gym Hero*, *Bassline Fever* and *Block Party
+Anthem* climbed in almost every high-energy list.
+
+### Experiment 2: mood-first mode
+
+Swapping genre and mood weights (`--mode mood-first`) **did** feel more accurate for High-Energy
+Pop: *Gym Hero* (pop but "intense") dropped from #2 to #5, and happy songs from other genres
+moved up. For Chill Lofi, *Focus Flow* (lofi but "focused") dropped from #3 to #5. So mood-first
+fixes the "Gym Hero for happy pop" problem, but it makes genre fans see more songs outside their
+genre.
 
 ---
 
 ## Limitations and Risks
 
-Summarize some limitations of your recommender.
+- Only 21 invented songs; most genres have a single song.
+- Genres must match exactly, so related genres (hip-hop/r&b, pop/indie pop) get no credit.
+- High-energy songs leak into many profiles (a small filter bubble).
+- No lyrics, language, popularity or listening history, and no collaborative filtering.
+- It never says "nothing matches": unknown genres silently get filler results.
 
-Examples:
-
-- It only works on a tiny catalog
-- It does not understand lyrics or language
-- It might over favor one genre or mood
-
-You will go deeper on this in your model card.
+See [model_card.md](model_card.md) for the full bias analysis.
 
 ---
 
 ## Reflection
 
-Read and complete `model_card.md`:
+Read the full model card, including evaluation and personal reflection:
 
 [**Model Card**](model_card.md)
 
-Write 1 to 2 paragraphs here about what you learned:
+**How recommenders turn data into predictions:** a recommender is really two steps. A scoring
+rule turns each song's features (genre, mood, energy) into one number that says how well it
+fits *this* user, and a ranking rule sorts those numbers and keeps the top few. The "prediction"
+is just the songs with the highest scores. What counts as a "good" song is decided by the weights
+I chose, not learned from real listeners, so there's no ground truth to check against apart from
+my own intuition.
 
-- about how recommenders turn data into predictions
-- about where bias or unfairness could show up in systems like this
-
-
-
+**Where bias shows up:** bias came from two places at once: the weights (a big genre bonus) and
+the dataset (lots of loud songs, one song for most genres). Together they made *Gym Hero* appear
+for very different people, gave rock and metal fans worse lists than lofi fans, and quietly
+ignored users whose genre wasn't in the catalog. In a real app with millions of users, the same
+small choices would decide which artists get heard and which never get recommended.
