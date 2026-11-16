@@ -1,43 +1,43 @@
 # AI Interactions Log
 
-> **Stretch features only.** Only fill in the sections that apply to stretch features you attempted. If you did not attempt a stretch feature, leave its section blank or delete it. This file is not required for the core project.
-
----
-
-## Agentic Workflow (SF8)
-
-> Document your experience using an AI agent (e.g., Cursor Agent, Claude, Copilot) to make multi-step changes autonomously.
-
-**What task did you give the agent?**
-
-<!-- Describe the goal you asked the agent to accomplish -->
-
-**Prompts used:**
-
-<!-- Paste the key prompts you gave the agent -->
-
-**What did the agent generate or change?**
-
-<!-- List the files edited, code generated, or commands run -->
-
-**What did you verify or fix manually?**
-
-<!-- Describe anything the agent got wrong or that required human review -->
+> Stretch feature attempted: **Challenge 2: Multiple Scoring Modes** (design pattern).
 
 ---
 
 ## Design Pattern (SF10)
 
-> Document how AI helped you choose or implement a design pattern.
-
 **Which design pattern did you use?**
 
-<!-- e.g., Strategy, Factory, Observer, etc. -->
+A lightweight **Strategy** pattern. Each scoring strategy is a `ScoringMode` (a frozen
+dataclass of weights: genre, mood, energy, acoustic). They live in the `SCORING_MODES` registry:
+`genre-first`, `mood-first` and `energy-focused`. The scoring rule itself (`score_song`) stays
+the same and takes the strategy as a `mode` argument, so any mode can be swapped in without
+touching the loop or the ranking code.
 
 **How did AI help you brainstorm or implement it?**
 
-<!-- Describe the conversation or suggestions that led to your decision -->
+Prompt (with `recommender.py` attached):
+> "I want users to switch between Genre-First, Mood-First and Energy-Focused ranking in
+> main.py. Suggest a simple design pattern that keeps recommender.py modular. Compare a
+> class-per-strategy approach with something lighter."
+
+The AI suggested two options: (1) a classic Strategy with an abstract `ScoringStrategy` class
+and one subclass per mode, each overriding `score()`; (2) since all three modes use the *same*
+rule with *different weights*, make each strategy a data object holding the weights and keep a
+single scoring function. I picked option 2 because the modes only differ in numbers, so
+subclasses would have repeated the same scoring code three times. It also made the Phase 4
+weight experiment (double energy, halve genre) a one-line addition: the `energy-focused` mode.
 
 **How does the pattern appear in your final code?**
 
-<!-- Point to the relevant class or method -->
+- `ScoringMode` dataclass and `SCORING_MODES` registry: `src/recommender.py`
+- `get_mode()` resolves a name to a strategy and raises a clear error for unknown names.
+- `score_song(user_prefs, song, mode=...)` and `recommend_songs(..., mode=...)` use the strategy.
+- `src/main.py` exposes it as `python -m src.main --mode mood-first`.
+- `tests/test_recommender.py::test_scoring_modes_change_weights` checks that switching modes
+  changes the score the way the weights say it should.
+
+**What I verified manually:** I ran all 7 profiles in all 3 modes and compared the top 5
+(results are in the README "Experiments You Tried" section). I checked that the default mode
+still gives exactly the same output as before the refactor, and that the max score for each
+mode matches the sum of its weights (5.0, 5.0, 5.5).

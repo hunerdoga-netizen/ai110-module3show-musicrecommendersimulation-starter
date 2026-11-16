@@ -1,12 +1,29 @@
 import csv
 from dataclasses import dataclass, asdict
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 
-# Algorithm Recipe weights (see README "Algorithm Recipe").
-GENRE_POINTS = 2.0
-MOOD_POINTS = 1.0
-ENERGY_POINTS = 1.5
-ACOUSTIC_POINTS = 0.5
+
+
+@dataclass(frozen=True)
+class ScoringMode:
+    """A scoring strategy: the point weights used by score_song."""
+    name: str
+    genre: float
+    mood: float
+    energy: float
+    acoustic: float
+
+
+# Strategy pattern: each mode is an interchangeable set of weights for the same scoring rule.
+SCORING_MODES: Dict[str, ScoringMode] = {
+    # Default Algorithm Recipe (see README).
+    "genre-first": ScoringMode("genre-first", genre=2.0, mood=1.0, energy=1.5, acoustic=0.5),
+    # Mood matters most; genre is a smaller bonus.
+    "mood-first": ScoringMode("mood-first", genre=1.0, mood=2.0, energy=1.5, acoustic=0.5),
+    # Phase 4 experiment: energy weight doubled (1.5 -> 3.0), genre weight halved (2.0 -> 1.0).
+    "energy-focused": ScoringMode("energy-focused", genre=1.0, mood=1.0, energy=3.0, acoustic=0.5),
+}
+DEFAULT_MODE = "genre-first"
 
 NUMERIC_INT_FIELDS = {"id"}
 NUMERIC_FLOAT_FIELDS = {"energy", "tempo_bpm", "valence", "danceability", "acousticness"}
@@ -95,8 +112,20 @@ def load_songs(csv_path: str) -> List[Dict]:
     return songs
 
 
-def score_song(user_prefs: Dict, song: Dict) -> Tuple[float, List[str]]:
+def get_mode(mode: Union[str, ScoringMode]) -> ScoringMode:
+    """Look up a scoring mode by name (or pass a ScoringMode through unchanged)."""
+    if isinstance(mode, ScoringMode):
+        return mode
+    if mode not in SCORING_MODES:
+        raise ValueError(f"Unknown mode '{mode}'. Choose from: {', '.join(SCORING_MODES)}")
+    return SCORING_MODES[mode]
+
+
+def score_song(user_prefs: Dict, song: Dict, mode: Union[str, ScoringMode] = DEFAULT_MODE) -> Tuple[float, List[str]]:
     """Score one song against the user's prefs and return (score, list of reasons)."""
+    weights = get_mode(mode)
+    GENRE_POINTS, MOOD_POINTS = weights.genre, weights.mood
+    ENERGY_POINTS, ACOUSTIC_POINTS = weights.energy, weights.acoustic
     score = 0.0
     reasons: List[str] = []
 
@@ -129,8 +158,10 @@ def score_song(user_prefs: Dict, song: Dict) -> Tuple[float, List[str]]:
     return round(score, 4), reasons
 
 
-def recommend_songs(user_prefs: Dict, songs: List[Dict], k: int = 5) -> List[Tuple[Dict, float, str]]:
+def recommend_songs(
+    user_prefs: Dict, songs: List[Dict], k: int = 5, mode: Union[str, ScoringMode] = DEFAULT_MODE
+) -> List[Tuple[Dict, float, str]]:
     """Score every song, sort highest-first, and return the top k as (song, score, explanation)."""
-    scored = [(song, *score_song(user_prefs, song)) for song in songs]
+    scored = [(song, *score_song(user_prefs, song, mode)) for song in songs]
     ranked = sorted(scored, key=lambda item: item[1], reverse=True)
     return [(song, score, "; ".join(reasons)) for song, score, reasons in ranked[:k]]

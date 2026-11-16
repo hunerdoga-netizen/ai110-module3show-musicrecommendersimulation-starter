@@ -95,3 +95,12 @@ def test_recommend_songs_sorted_highest_first():
     assert len(results) == 5
     assert scores == sorted(scores, reverse=True)
     assert results[0][0]["genre"] == "lofi"
+
+
+def test_scoring_modes_change_weights():
+    song = {"genre": "pop", "mood": "sad", "energy": 0.8, "acousticness": 0.2}
+    prefs = {"genre": "pop", "mood": "happy", "energy": 0.8}
+    genre_first, _ = score_song(prefs, song, "genre-first")
+    mood_first, _ = score_song(prefs, song, "mood-first")
+    assert genre_first == 3.5
+    assert mood_first == 2.5
