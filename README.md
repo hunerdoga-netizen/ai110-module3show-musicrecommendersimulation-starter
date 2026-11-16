@@ -138,18 +138,42 @@ You can add more tests in `tests/test_recommender.py`.
 
 ## Sample Recommendation Output
 
-Paste a sample of your recommender's output here as a text block so a reader can see what it produces:
+Output of `python -m src.main` with the default "pop / happy" profile:
 
 ```
-# e.g.:
-# User profile: genre=indie, mood=chill, energy=low
-# Recommendations:
-#   1. ...
-#   2. ...
-#   3. ...
+Loaded songs: 21
+
+========================================================================
+Profile: Default Pop / Happy
+Prefs:   genre=pop, mood=happy, energy=0.8
+========================================================================
+1. Sunrise City by Neon Echo  [pop / happy]
+   Score: 4.47
+     - genre match: pop (+2.0)
+     - mood match: happy (+1.0)
+     - energy 0.82 vs target 0.80 (+1.47)
+2. Gym Hero by Max Pulse  [pop / intense]
+   Score: 3.31
+     - genre match: pop (+2.0)
+     - energy 0.93 vs target 0.80 (+1.30)
+3. Fuego Lento by Sol Marino  [latin / happy]
+   Score: 2.50
+     - mood match: happy (+1.0)
+     - energy 0.80 vs target 0.80 (+1.50)
+4. Rooftop Lights by Indigo Parade  [indie pop / happy]
+   Score: 2.44
+     - mood match: happy (+1.0)
+     - energy 0.76 vs target 0.80 (+1.44)
+5. Block Party Anthem by Verse Theory  [hip-hop / happy]
+   Score: 2.44
+     - mood match: happy (+1.0)
+     - energy 0.84 vs target 0.80 (+1.44)
 ```
 
-**Screenshot or video** *(optional)*: <!-- Insert a screenshot or demo video link here -->
+This matches what I expected: *Sunrise City* is the only song that is pop **and** happy **and**
+close to 0.8 energy, so it wins by more than a point. *Gym Hero* comes second only because of the
++2.0 genre bonus, even though its mood is "intense", not happy. Places 3–5 are happy songs from
+other genres that have almost exactly the right energy.
 
 ---
 

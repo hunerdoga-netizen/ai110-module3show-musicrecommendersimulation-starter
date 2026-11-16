@@ -21,16 +21,25 @@ Prompts:
 
 ## 3. How the Model Works  
 
-Explain your scoring approach in simple language.  
+VibeFinder works like a judge with a scorecard. For every song in the catalog it asks four
+questions and hands out points:
 
-Prompts:  
+1. **Is it your favorite genre?** If yes, +2 points. This is the biggest prize, because genre is
+   the most stable part of someone's taste.
+2. **Is it your favorite mood?** If yes, +1 point.
+3. **How close is its energy to the energy you want?** Up to +1.5 points. A perfect match gets
+   all 1.5; the further away the song is (louder *or* quieter), the fewer points it gets. It does
+   not reward "more energy", only "the right energy".
+4. **Does it sound the way you like?** Up to +0.5 points. If you like acoustic music, more
+   acoustic songs get more of this bonus; if you don't, more produced/electronic songs do.
 
-- What features of each song are used (genre, energy, mood, etc.)  
-- What user preferences are considered  
-- How does the model turn those into a score  
-- What changes did you make from the starter logic  
+After every song has a score, the songs are sorted from highest to lowest and the top 5 are shown,
+each with the list of reasons that earned its points (for example "genre match: pop (+2.0)").
 
-Avoid code here. Pretend you are explaining the idea to a friend who does not program.
+Changes from the starter: the starter returned the first *k* songs with no scoring. I added CSV
+loading with number conversion, the four-part score above, a reason list for every score, sorting
+with `sorted()` (which builds a new list and leaves the original catalog unchanged, unlike
+`.sort()`), and the same logic in the `Recommender` class so the tests pass.
 
 ---
 
